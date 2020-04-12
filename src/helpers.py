@@ -21,6 +21,17 @@ class XMLRenderer(BaseRenderer):
 
 
 def open_log_file():
-    with open("src/logs.txt", "r+") as f:
-        logs = list(f)
-    return logs
+    try:
+        with open("src/logs.txt", "r+") as f:
+            logs = f.read()
+        return logs
+    except IOError:
+        return None
+
+
+def elapsed_ms(old, now):
+
+    diff = now - old
+    ms = (diff.seconds * 1000) + (diff.microseconds / 1000)
+
+    return ms

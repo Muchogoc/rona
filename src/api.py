@@ -1,11 +1,12 @@
-import time
+import datetime
+import math
 
-from flask import Blueprint, g, render_template, request
+from flask import Blueprint, g, request
 from flask_api.decorators import set_renderers
 from flask_api.renderers import BrowsableAPIRenderer, JSONRenderer
 
 from .estimator import estimator
-from .helpers import XMLRenderer, open_log_file
+from .helpers import XMLRenderer, elapsed_ms, open_log_file
 
 bp = Blueprint("api", __name__, url_prefix="/api/v1")
 
@@ -46,15 +47,22 @@ def xml_covid_estimates():
     return {"COVID-19 estimator": API_PURPOSE}
 
 
-@bp.route("/logs")
+@bp.route("/on-covid-19/logs")
 def covid_estimates_logs():
     logs = open_log_file()
-    return render_template("log.html", logs=logs)
+    if logs is not None:
+
+        # return (
+        #     render_template("log.html", logs=logs),
+        #     {"Content-Type": "text/plain"},
+        # )
+        return logs, {"Content-Type": "text/plain"}
+    return {"info": "no logs to display"}
 
 
 @bp.before_request
 def start_timer():
-    g.start = time.time()
+    g.start = datetime.datetime.now()
 
 
 @bp.after_request
@@ -64,14 +72,15 @@ def log_request(response):
     elif request.path.endswith("logs"):
         return response
 
-    now = time.time()
-    duration = (now - g.start) * 1000
-    ms = round(duration, 2)
+    now = datetime.datetime.now()
+    duration = elapsed_ms(g.start, now)
+    ms = str(math.trunc(duration)).zfill(2)
 
     log = (
-        f"{request.method}    {request.path}  {response.status_code}  {ms} ms"
+        f"{request.method}    {request.path}  {response.status_code}  {ms}ms\n"
     )
+
     with open("src/logs.txt", "a+") as f:
-        f.write(log + "\n")
+        f.write(log)
 
     return response
